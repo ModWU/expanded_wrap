@@ -15,20 +15,12 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  bool isExtended = true;
-
   List<String> textList = [];
 
   int minLines = 2;
   int? maxLines;
 
   ExpandedWrapController controller = ExpandedWrapController();
-
-  void setExpanded(bool value) {
-    setState(() {
-      isExtended = value;
-    });
-  }
 
   void _randomMinLines() {
     setState(() {
