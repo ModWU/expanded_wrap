@@ -1,6 +1,6 @@
 # example
 
-A new Flutter project.
+A example for expanded_wrap.
 
 ## Getting Started
 

@@ -11,29 +11,83 @@ and the Flutter guide for
 [developing packages and plugins](https://flutter.dev/to/develop-packages).
 -->
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+We use the expanded_wrap plugin to build a expanded wrap。
 
 ## Features
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+* support minLines
+* support maxLines
+* support dropChild
+* support nearChild
 
 ## Getting started
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+```yaml
+dependencies:
+  expanded_wrap: '^0.0.1'
+```
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
 ```dart
-const like = 'sample';
+_buildExpandedWrap() async {
+  return ExpandedWrap(
+    spacing: 24,
+    runSpacing: 24,
+    minLines: minLines,
+    maxLines: maxLines,
+    nearChild: Text('nearChild'),
+    nearAlignment: WrapMoreNearAlignment.stretch,
+    alwaysShowNearChild:
+    false, // When set to false, it means that [nearChild] will only be displayed when there is more unfinished data
+    nearSpacing: 20,
+    nearDirection: AxisDirection.left,
+    dropBuilder: (BuildContext context, ExpandedWrapController controller,
+        Widget? child) {
+      return Material(
+        child: Ink(
+          color: Colors.red.withValues(alpha: 0.1),
+          width: 100,
+          height: 24,
+          child: InkWell(
+            onTap: controller.toggle,
+            child: Center(
+              child: Text(
+                controller.isExpanded ? 'collapse' : 'expand',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                ),
+                maxLines: 1,
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+    children: textList.indexed
+        .map(
+          (s) => Container(
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.01),
+          border: Border.all(color: Colors.red, width: 0.5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 12),
+        height: 24,
+        child: Align(
+          heightFactor: 1.0,
+          widthFactor: 1.0,
+          child: Text(
+            '${s.$1}#${s.$2}',
+            textAlign: TextAlign.start,
+            maxLines: 2,
+            //overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    )
+        .toList(),
+  );
+}
 ```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
