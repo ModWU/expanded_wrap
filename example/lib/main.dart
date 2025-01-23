@@ -198,9 +198,13 @@ class _MyAppState extends State<MyApp> {
                       color: Colors.grey,
                     );
                   },
-                  children: textList.indexed
-                      .map((s) => b('${s.$1}#${s.$2}'))
-                      .toList(),
+                  children:
+                      textList.indexed.map((s) => b('${s.$1}#${s.$2}')).toList()
+                        ..add(Container(
+                          width: double.infinity,
+                          height: 40,
+                          color: Colors.red,
+                        )),
                 ),
               ),
               v(24),

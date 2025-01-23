@@ -1433,12 +1433,32 @@ class RenderWrapMore extends RenderBox
       );
     }
 
-    final Map<RenderBox, Size> layoutChildren = {};
-    Size tryLayoutChild(RenderBox child) => layoutChildren.putIfAbsent(
-        child, () => layoutChild(child, childConstraints));
-
     _AxisSize? nearSize;
     double tmpMainAxisLimit = mainAxisLimit;
+    final Map<RenderBox, Size> layoutChildren = {};
+    Size tryLayoutChild(RenderBox child) {
+      final Size size = layoutChildren.putIfAbsent(
+          child, () => layoutChild(child, childConstraints));
+      if (nearSize == null || !sameNearDirection) return size;
+      final (
+        double maxMainSize,
+        BoxConstraints newChildConstraints,
+      ) = switch (direction) {
+        Axis.horizontal => (
+            size.width,
+            BoxConstraints(maxWidth: tmpMainAxisLimit)
+          ),
+        Axis.vertical => (
+            size.width,
+            BoxConstraints(maxHeight: tmpMainAxisLimit)
+          ),
+      };
+      if (maxMainSize <= tmpMainAxisLimit) return size;
+      final Size newSize = layoutChild(child, newChildConstraints);
+      layoutChildren[child] = newSize;
+      return newSize;
+    }
+
     if (nearLayout != null && nearLayout.hasSize) {
       // // 此时需要计算nearLayout
       final isShowNearChild = alwaysShowNearChild
