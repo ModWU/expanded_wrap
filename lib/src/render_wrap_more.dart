@@ -204,7 +204,7 @@ class _RunMetrics {
     // 此时正好计算最小行上的数据，需要判断是否在这一行显示[dropChild]
     // 当这一行只能容纳[dropChild]的尺寸时，[dropChild]直接放到[currentLine]的下一行
     if (hasMinLines && dropLayout != null) {
-      final drop = dropLayout.layout();
+      final drop = dropLayout.layout(force: true);
       if (drop.hasSize) {
         if (isExpanded) {
           // 先考虑是否有下一个元素的逻辑
@@ -1401,44 +1401,15 @@ class RenderWrapMore extends RenderBox
         ),
     };
 
-    final bool hasDropChild = _hasDropChild;
-    // [dropChild]的布局处理
-    _ChildLayout? dropLayout;
-    if (hasDropChild) {
-      assert(dropRenderBox != null);
-      dropLayout = _ChildLayout(
-        dropRenderBox!,
-        layoutChild,
-        childConstraints,
-        direction,
-        spacing: dropChildSpacing ?? spacing,
-      );
-    }
-
     // [nearChild]的布局处理
     _ChildLayout? nearLayout;
     final bool sameNearDirection = _sameNearDirection;
-    if (nearRenderBox != null) {
-      _resetParentData(nearRenderBox!);
-      final bool isStretch =
-          !sameNearDirection && nearAlignment == WrapMoreNearAlignment.stretch;
-      nearLayout = _ChildLayout(
-        nearRenderBox!,
-        layoutChild,
-        childConstraints,
-        direction,
-      ).layout(
-        mainMinSize: isStretch ? mainAxisLimit : null,
-        mainMaxSize: isStretch ? mainAxisLimit : null,
-      );
-    }
-
     _AxisSize? nearSize;
     double tmpMainAxisLimit = mainAxisLimit;
     final Map<RenderBox, Size> layoutChildren = {};
-    Size tryLayoutChild(RenderBox child) {
-      final Size size = layoutChildren.putIfAbsent(
-          child, () => layoutChild(child, childConstraints));
+    Size tryLayoutChild(RenderBox child, [BoxConstraints? myChildConstraints]) {
+      final Size size = layoutChildren.putIfAbsent(child,
+          () => layoutChild(child, myChildConstraints ?? childConstraints));
       if (nearSize == null || !sameNearDirection) return size;
       final (
         double maxMainSize,
@@ -1457,6 +1428,35 @@ class RenderWrapMore extends RenderBox
       final Size newSize = layoutChild(child, newChildConstraints);
       layoutChildren[child] = newSize;
       return newSize;
+    }
+
+    final bool hasDropChild = _hasDropChild;
+    // [dropChild]的布局处理
+    _ChildLayout? dropLayout;
+    if (hasDropChild) {
+      assert(dropRenderBox != null);
+      dropLayout = _ChildLayout(
+        dropRenderBox!,
+        tryLayoutChild,
+        childConstraints,
+        direction,
+        spacing: dropChildSpacing ?? spacing,
+      );
+    }
+
+    if (nearRenderBox != null) {
+      _resetParentData(nearRenderBox!);
+      final bool isStretch =
+          !sameNearDirection && nearAlignment == WrapMoreNearAlignment.stretch;
+      nearLayout = _ChildLayout(
+        nearRenderBox!,
+        layoutChild,
+        childConstraints,
+        direction,
+      ).layout(
+        mainMinSize: isStretch ? mainAxisLimit : null,
+        mainMaxSize: isStretch ? mainAxisLimit : null,
+      );
     }
 
     if (nearLayout != null && nearLayout.hasSize) {

@@ -161,38 +161,35 @@ class _MyAppState extends State<MyApp> {
                   runSpacing: 24,
                   minLines: minLines,
                   maxLines: maxLines,
+                  verticalDirection: VerticalDirection.down,
                   nearChild: GestureDetector(
                     onTap: () {
                       print("near");
                     },
-                    child: Container(
-                      width: 80,
-                      height: 20,
-                      color: Colors.red.withValues(alpha: 0.1),
-                      alignment: Alignment.center,
-                      child: AnimatedBuilder(
-                          animation: controller,
-                          builder: (_, __) {
-                            return _button(
-                              controller.isExpanded ? 'collapse' : 'expand',
-                              controller.toggle,
-                              color: Colors.white,
-                            );
-                          }),
-                    ),
+                    child: AnimatedBuilder(
+                        animation: controller,
+                        builder: (_, __) {
+                          return _button(
+                            controller.isExpanded ? 'collapse' : 'expand',
+                            controller.toggle,
+                            height: 24,
+                            width: 120,
+                            color: Colors.white,
+                          );
+                        }),
                   ),
                   nearAlignment: WrapMoreNearAlignment.stretch,
                   alwaysShowNearChild:
                       false, // When set to false, it means that [nearChild] will only be displayed when there is more unfinished data
                   nearSpacing: 20,
-                  nearDirection: AxisDirection.left,
+                  nearDirection: AxisDirection.right,
                   controller: controller,
                   dropBuilder: (BuildContext context,
                       ExpandedWrapController controller, Widget? child) {
                     return _button(
                       controller.isExpanded ? 'collapse' : 'expand',
                       controller.toggle,
-                      width: 100,
+                      width: double.infinity,
                       height: 24,
                       textColor: Colors.white,
                       color: Colors.grey,
@@ -203,7 +200,11 @@ class _MyAppState extends State<MyApp> {
                         ..add(Container(
                           width: double.infinity,
                           height: 40,
-                          color: Colors.red,
+                          color: Colors.red.withValues(alpha: 0.4),
+                          child: Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: Text('last'),
+                          ),
                         )),
                 ),
               ),
