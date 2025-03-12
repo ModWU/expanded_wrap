@@ -19,6 +19,7 @@ We use the expanded_wrap plugin to build a expanded wrap。
 * support maxLines
 * support dropChild
 * support nearChild
+* support separate
 
 ## Getting started
 
@@ -42,6 +43,12 @@ _buildExpandedWrap() async {
     false, // When set to false, it means that [nearChild] will only be displayed when there is more unfinished data
     nearSpacing: 20,
     nearDirection: AxisDirection.left,
+    separate: Container(
+      width: 1,
+      height: 60,
+      margin: EdgeInsets.symmetric(horizontal: 4),
+      color: Colors.red,
+    ),
     dropBuilder: (BuildContext context, ExpandedWrapController controller,
         Widget? child) {
       return Material(

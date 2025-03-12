@@ -1,8 +1,10 @@
-import 'wrap_more_definition.dart';
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
-import 'dart:math' as math;
+
+import 'wrap_more_definition.dart';
 
 typedef _NextChild = RenderBox? Function(RenderBox child);
 typedef _PositionChild = void Function(Offset offset, RenderBox child);
@@ -180,6 +182,10 @@ class _RunMetrics {
         needPaintDropChild;
   }
 
+  static void _setNextSeparate(bool hasNextSeparate, RenderBox child) {
+    (child.parentData! as WrapMoreParentData).hasNextSeparate = hasNextSeparate;
+  }
+
   // Look ahead, creates a new run if incorporating the child would exceed the allowed line width.
   List<_RunMetrics>? tryAddingNewChild(
     RenderBox child,
@@ -194,17 +200,22 @@ class _RunMetrics {
     int minLines,
     int? maxLines,
     _ChildLayout? dropLayout,
+    _AxisSize? separateSize,
   ) {
+    final double totalSpacing =
+        separateSize == null ? spacing : separateSize.mainAxisExtent;
     final double childTotal =
-        axisSize.mainAxisExtent + childSize.mainAxisExtent + spacing;
+        axisSize.mainAxisExtent + childSize.mainAxisExtent + totalSpacing;
     bool needsNewRun = childTotal - maxMainExtent > precisionErrorTolerance;
     final bool hasMinLines = maxLines == null || minLines < maxLines;
     RenderBox? resultDropChild;
+    _AxisSize resultDropChildSize = _AxisSize.empty;
     bool breakDropLine = false;
     // 此时正好计算最小行上的数据，需要判断是否在这一行显示[dropChild]
     // 当这一行只能容纳[dropChild]的尺寸时，[dropChild]直接放到[currentLine]的下一行
     if (hasMinLines && dropLayout != null) {
       final drop = dropLayout.layout(force: true);
+      resultDropChildSize = drop.axisSize;
       if (drop.hasSize) {
         if (isExpanded) {
           // 先考虑是否有下一个元素的逻辑
@@ -322,8 +333,10 @@ class _RunMetrics {
     //     "wcc##${currentLine} => resultDropChild => ${resultDropChild != null}, childCount => ${childCount}, needsNewRun => $needsNewRun, child == resultDropChild => ${child == resultDropChild}，breakDropLine => $breakDropLine");
 
     if (needsNewRun) {
-      final _RunMetrics runMetrics =
-          _RunMetrics(child, childSize, breakDropLine ? null : resultDropChild);
+      final _RunMetrics runMetrics = _RunMetrics(
+          child,
+          child == resultDropChild ? resultDropChildSize : childSize,
+          breakDropLine ? null : resultDropChild);
       final List<_RunMetrics> runMetricsList = [runMetrics];
       if (child == resultDropChild) {
         runMetrics.dropChild = resultDropChild;
@@ -346,7 +359,13 @@ class _RunMetrics {
         return null;
       } else {
         axisSize += childSize +
-            _AxisSize(mainAxisExtent: spacing, crossAxisExtent: 0.0);
+            _AxisSize(
+              mainAxisExtent: totalSpacing,
+              crossAxisExtent: separateSize?.crossAxisExtent ?? 0.0,
+            );
+        if (separateSize != null) {
+          _setNextSeparate(true, previousChild);
+        }
         childCount += 1;
         if (flipMainAxis) {
           leadingChild = child;
@@ -391,6 +410,7 @@ class RenderWrapMore extends RenderBox
   RenderWrapMore({
     RenderBox? dropRenderBox,
     RenderBox? nearRenderBox,
+    RenderBox? separateRenderBox,
     List<RenderBox>? children,
     Axis direction = Axis.horizontal,
     AxisDirection nearDirection = AxisDirection.right,
@@ -428,6 +448,7 @@ class RenderWrapMore extends RenderBox
         _alwaysShowNearChild = alwaysShowNearChild {
     this.dropRenderBox = dropRenderBox;
     this.nearRenderBox = nearRenderBox;
+    this.separateRenderBox = separateRenderBox;
     addAll(children);
   }
 
@@ -510,6 +531,19 @@ class RenderWrapMore extends RenderBox
     }
     _dropChildSpacing = value;
     markNeedsLayout();
+  }
+
+  /// separateChild
+  RenderBox? _separateRenderBox;
+  RenderBox? get separateRenderBox => _separateRenderBox;
+  set separateRenderBox(RenderBox? value) {
+    if (_separateRenderBox != null) {
+      dropChild(_separateRenderBox!);
+    }
+    _separateRenderBox = value;
+    if (_separateRenderBox != null) {
+      adoptChild(_separateRenderBox!);
+    }
   }
 
   bool get isExpanded => _isExpanded;
@@ -773,6 +807,7 @@ class RenderWrapMore extends RenderBox
     super.attach(owner);
     _dropRenderBox?.attach(owner);
     _nearRenderBox?.attach(owner);
+    _separateRenderBox?.attach(owner);
   }
 
   @override
@@ -780,6 +815,7 @@ class RenderWrapMore extends RenderBox
     super.detach();
     _dropRenderBox?.detach();
     _nearRenderBox?.detach();
+    _separateRenderBox?.detach();
   }
 
   @override
@@ -792,12 +828,17 @@ class RenderWrapMore extends RenderBox
     if (_nearRenderBox != null) {
       redepthChild(_nearRenderBox!);
     }
+
+    if (_separateRenderBox != null) {
+      redepthChild(_separateRenderBox!);
+    }
   }
 
   @override
   void visitChildren(RenderObjectVisitor visitor) {
     RenderBox? child = firstChild;
     bool needPaintDropChild = false;
+    bool needPaintSeparateChild = false;
     while (child != null) {
       visitor(child);
       final WrapMoreParentData childParentData =
@@ -811,11 +852,18 @@ class RenderWrapMore extends RenderBox
         needPaintDropChild = true;
         break;
       }
+      if (childParentData.hasNextSeparate) {
+        needPaintSeparateChild = true;
+      }
       child = childParentData.nextSibling;
     }
 
     if (needPaintDropChild && dropRenderBox != null) {
       visitor(dropRenderBox!);
+    }
+
+    if (needPaintSeparateChild && separateRenderBox != null) {
+      visitor(separateRenderBox!);
     }
 
     if (nearRenderBox case final child?) {
@@ -942,9 +990,13 @@ class RenderWrapMore extends RenderBox
           width = math.max(width,
               dropRenderBox?.getMinIntrinsicWidth(double.infinity) ?? 0.0);
         }
-        if (_nearRenderBox != null) {
+        if (nearRenderBox != null) {
           width = math.max(width,
-              _nearRenderBox?.getMinIntrinsicWidth(double.infinity) ?? 0.0);
+              nearRenderBox?.getMinIntrinsicWidth(double.infinity) ?? 0.0);
+        }
+        if (separateRenderBox != null) {
+          width = math.max(width,
+              separateRenderBox?.getMinIntrinsicWidth(double.infinity) ?? 0.0);
         }
         return width;
       case Axis.vertical:
@@ -970,6 +1022,10 @@ class RenderWrapMore extends RenderBox
         if (nearRenderBox != null) {
           width +=
               (nearRenderBox?.getMaxIntrinsicWidth(double.infinity) ?? 0.0);
+        }
+        if (separateRenderBox != null) {
+          width +=
+              separateRenderBox?.getMaxIntrinsicWidth(double.infinity) ?? 0.0;
         }
         return width;
       case Axis.vertical:
@@ -999,6 +1055,10 @@ class RenderWrapMore extends RenderBox
           height = math.max(height,
               nearRenderBox?.getMinIntrinsicHeight(double.infinity) ?? 0.0);
         }
+        if (separateRenderBox != null) {
+          height += math.max(height,
+              separateRenderBox?.getMinIntrinsicHeight(double.infinity) ?? 0.0);
+        }
         return height;
     }
   }
@@ -1023,6 +1083,11 @@ class RenderWrapMore extends RenderBox
         if (nearRenderBox != null) {
           height +=
               (nearRenderBox?.getMaxIntrinsicHeight(double.infinity) ?? 0.0);
+        }
+        if (separateRenderBox != null) {
+          height +=
+              (separateRenderBox?.getMaxIntrinsicHeight(double.infinity) ??
+                  0.0);
         }
         return height;
     }
@@ -1084,7 +1149,8 @@ class RenderWrapMore extends RenderBox
       _AxisSize childrenAxisSize,
       _AxisSize onlyChildrenAxisSize,
       List<_RunMetrics> runMetrics,
-      _AxisSize? nearSize
+      _AxisSize? nearSize,
+      _AxisSize? separateSize
     ) = _computeRuns(constraints, ChildLayoutHelper.dryLayoutChild);
     final _AxisSize containerAxisSize =
         childrenAxisSize.applyConstraints(constraints, direction);
@@ -1098,7 +1164,7 @@ class RenderWrapMore extends RenderBox
 
     Size getChildSize(RenderBox child) => child.getDryLayout(childConstraints);
     _positionChildren(runMetrics, childrenAxisSize, containerAxisSize, nearSize,
-        findHighestBaseline, getChildSize);
+        separateSize, findHighestBaseline, getChildSize);
     return baselineOffset.offset;
   }
 
@@ -1120,7 +1186,8 @@ class RenderWrapMore extends RenderBox
       _AxisSize childrenAxisSize,
       _AxisSize onlyChildrenAxisSize,
       List<_RunMetrics> runMetrics,
-      _AxisSize? nearSize
+      _AxisSize? nearSize,
+      _AxisSize? separateSize
     ) = _computeRuns(constraints, layoutChild);
     final _AxisSize containerAxisSize =
         childrenAxisSize.applyConstraints(constraints, direction);
@@ -1179,6 +1246,8 @@ class RenderWrapMore extends RenderBox
     parentData.needPaintDropChild = false;
     parentData.isEndLineLast = false;
     parentData.showNearChild = false;
+    parentData.hasNextSeparate = false;
+    parentData.nextSeparateOffset = Offset.zero;
   }
 
   static void _setEndLineLast(RenderBox child) {
@@ -1227,7 +1296,8 @@ class RenderWrapMore extends RenderBox
       _AxisSize childrenAxisSize,
       _AxisSize onlyChildrenAxisSize,
       List<_RunMetrics> runMetrics,
-      _AxisSize? nearSize
+      _AxisSize? nearSize,
+      _AxisSize? separateSize
     ) = _computeRuns(constraints, ChildLayoutHelper.layoutChild);
     _AxisSize containerAxisSize =
         childrenAxisSize.applyConstraints(constraints, direction);
@@ -1248,12 +1318,13 @@ class RenderWrapMore extends RenderBox
     _hasVisualOverflow =
         freeAxisSize.mainAxisExtent < 0.0 || freeAxisSize.crossAxisExtent < 0.0;
     _positionChildren(runMetrics, freeAxisSize, containerAxisSize, nearSize,
-        _setChildPosition, _getChildSize);
+        separateSize, _setChildPosition, _getChildSize);
   }
 
   dynamic _layoutRuns(
     double mainAxisLimit,
     _ChildLayout? dropLayout,
+    _AxisSize? separateSize,
     _GetChildSize layoutChild,
     bool lookupMore,
   ) {
@@ -1293,6 +1364,7 @@ class RenderWrapMore extends RenderBox
           minLines,
           maxLines,
           dropLayout,
+          separateSize,
         );
         final int length = runs?.length ?? 0;
         if (runs != null && length > 1) {
@@ -1381,7 +1453,8 @@ class RenderWrapMore extends RenderBox
     _AxisSize childrenSize,
     _AxisSize onlyChildrenAxisSize,
     List<_RunMetrics> runMetrics,
-    _AxisSize? nearSize
+    _AxisSize? nearSize,
+    _AxisSize? separateSize
   ) _computeRuns(BoxConstraints constraints, ChildLayouter layoutChild) {
     assert(firstChild != null);
     final (
@@ -1444,6 +1517,18 @@ class RenderWrapMore extends RenderBox
       );
     }
 
+    // [separateChild]的布局处理
+    _AxisSize? separateSize;
+    if (separateRenderBox != null) {
+      separateSize = _ChildLayout(
+        separateRenderBox!,
+        tryLayoutChild,
+        childConstraints,
+        direction,
+        spacing: 0.0,
+      ).layout(force: true).axisSize;
+    }
+
     if (nearRenderBox != null) {
       _resetParentData(nearRenderBox!);
       final bool isStretch =
@@ -1466,6 +1551,7 @@ class RenderWrapMore extends RenderBox
           : _layoutRuns(
               tmpMainAxisLimit,
               dropLayout,
+              separateSize,
               tryLayoutChild,
               true,
             );
@@ -1490,6 +1576,7 @@ class RenderWrapMore extends RenderBox
     ) = _layoutRuns(
       tmpMainAxisLimit,
       dropLayout,
+      separateSize,
       tryLayoutChild,
       false,
     );
@@ -1537,7 +1624,13 @@ class RenderWrapMore extends RenderBox
     } else {
       tmpChildrenAxisSize = tmpChildrenAxisSize.flipped;
     }
-    return (tmpChildrenAxisSize, onlyChildrenAxisSize, runMetrics, nearSize);
+    return (
+      tmpChildrenAxisSize,
+      onlyChildrenAxisSize,
+      runMetrics,
+      nearSize,
+      separateSize
+    );
   }
 
   // 布局[nearChild]，返回[children的偏移和尺寸]
@@ -1622,10 +1715,14 @@ class RenderWrapMore extends RenderBox
       _AxisSize freeAxisSize,
       _AxisSize containerAxisSize,
       _AxisSize? nearSize,
+      _AxisSize? separateSize,
       _PositionChild positionChild,
       _GetChildSize getChildSize) {
     assert(runMetrics.isNotEmpty);
-    final double spacing = this.spacing;
+    final double totalSpacing =
+        separateSize == null ? spacing : separateSize.mainAxisExtent;
+    final double separateMainAxisExtent = separateSize?.mainAxisExtent ?? 0.0;
+    final double separateCrossAxisExtent = separateSize?.crossAxisExtent ?? 0.0;
 
     final double crossAxisFreeSpace =
         math.max(0.0, freeAxisSize.crossAxisExtent);
@@ -1638,9 +1735,6 @@ class RenderWrapMore extends RenderBox
       double needCrossSize
     ) = _positionNearChild(containerAxisSize, nearSize, flipMainAxis,
         flipCrossAxis, positionChild);
-
-    // print(
-    //     "nearDirection: $nearDirection, freeAxisSize: ${freeAxisSize._size}, flipMainAxis: $flipMainAxis, needChildrenMainOffset: $needChildrenMainOffset, needChildrenCrossOffset: $needChildrenCrossOffset");
 
     final WrapMoreCrossAlignment effectiveCrossAlignment =
         flipCrossAxis ? crossAxisAlignment.flipped : crossAxisAlignment;
@@ -1671,10 +1765,8 @@ class RenderWrapMore extends RenderBox
               run.axisSize.mainAxisExtent -
               needMainSize);
       final (double childLeadingSpace, double childBetweenSpace) =
-          alignment.distributeSpace(mainAxisFreeSpace, spacing,
+          alignment.distributeSpace(mainAxisFreeSpace, totalSpacing,
               math.max(1, childCountWithoutDropChild), flipMainAxis);
-      // print(
-      //     "needMainSize: ${needMainSize}, mainAxisFreeSpace: ${mainAxisFreeSpace}, childLeadingSpace: $childLeadingSpace");
 
       double childMainAxisOffset = childLeadingSpace + needChildrenMainOffset;
       final positionedDropChild = hasDropChild
@@ -1733,6 +1825,28 @@ class RenderWrapMore extends RenderBox
             _getOffset(
                 childMainAxisOffset, runCrossAxisOffset + childCrossAxisOffset),
             child);
+        final WrapMoreParentData parentData =
+            child.parentData as WrapMoreParentData;
+        if (parentData.hasNextSeparate) {
+          // Next step positioned separateChild
+          final double separateChildCrossAxisOffset =
+              effectiveCrossAlignment.alignment *
+                  (runCrossAxisExtent - separateCrossAxisExtent);
+          // positioned the center of childBetweenSpace
+          if (flipMainAxis) {
+            parentData.nextSeparateOffset = _getOffset(
+                childMainAxisOffset -
+                    separateMainAxisExtent -
+                    (childBetweenSpace - separateMainAxisExtent) / 2,
+                runCrossAxisOffset + separateChildCrossAxisOffset);
+          } else {
+            parentData.nextSeparateOffset = _getOffset(
+                childMainAxisOffset +
+                    childMainAxisExtent +
+                    (childBetweenSpace - separateMainAxisExtent) / 2,
+                runCrossAxisOffset + separateChildCrossAxisOffset);
+          }
+        }
         childMainAxisOffset += childMainAxisExtent + childBetweenSpace;
       }
 
@@ -1761,6 +1875,10 @@ class RenderWrapMore extends RenderBox
           children.add(drb);
         }
         break;
+      } else if (childParentData.hasNextSeparate) {
+        if (separateRenderBox case final srb?) {
+          children.add(srb);
+        }
       }
 
       child = childParentData.nextSibling;
@@ -1777,13 +1895,24 @@ class RenderWrapMore extends RenderBox
     final int length = children.length;
     for (int i = length - 1; i >= 0; i--) {
       final child = children[i];
-      final WrapMoreParentData childParentData =
-          child.parentData! as WrapMoreParentData;
+      final Offset childOffset;
+      if (child == separateRenderBox) {
+        assert(i > 0);
+        final preChild = children[i - 1];
+        final WrapMoreParentData preChildParentData =
+            preChild.parentData! as WrapMoreParentData;
+        childOffset = preChildParentData.nextSeparateOffset;
+      } else {
+        final WrapMoreParentData childParentData =
+            child.parentData! as WrapMoreParentData;
+        childOffset = childParentData.offset;
+      }
+
       final bool isHit = result.addWithPaintOffset(
-        offset: childParentData.offset,
+        offset: childOffset,
         position: position,
         hitTest: (BoxHitTestResult result, Offset transformed) {
-          assert(transformed == position - childParentData.offset);
+          assert(transformed == position - childOffset);
           return child.hitTest(result, position: transformed);
         },
       );
@@ -1840,6 +1969,13 @@ class RenderWrapMore extends RenderBox
         }
         // [dropChild]之后不会再绘制任何元素
         break;
+      } else if (childParentData.hasNextSeparate) {
+        final RenderBox? separateRenderBox = this.separateRenderBox;
+        assert(separateRenderBox != null);
+        if (separateRenderBox != null) {
+          context.paintChild(
+              separateRenderBox, childParentData.nextSeparateOffset + offset);
+        }
       }
       child = childParentData.nextSibling;
     }
@@ -1871,4 +2007,8 @@ class WrapMoreParentData extends ContainerBoxParentData<RenderBox> {
   bool isEndLineLast = false;
   // 是否展示[nearChild]
   bool showNearChild = false;
+  // 是否下一个有[separate]
+  bool hasNextSeparate = false;
+  // 下一个[separate]的偏移
+  Offset nextSeparateOffset = Offset.zero;
 }

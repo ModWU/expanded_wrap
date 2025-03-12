@@ -8,4 +8,8 @@
 
 ## 0.0.3
 
-* Fixed the maximum size issue on the main axis。
+* Fixed the maximum size issue on the main axis.
+
+## 1.0.0
+
+* Adding the [separate] feature.

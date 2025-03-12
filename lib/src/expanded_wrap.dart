@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
-import 'wrap_more_definition.dart';
+
 import 'wrap_more.dart';
+import 'wrap_more_definition.dart';
 
 /// Wrap with expand and collapse function.
 class ExpandedWrap extends StatefulWidget {
@@ -27,7 +28,9 @@ class ExpandedWrap extends StatefulWidget {
     this.nearSpacing = 0.0,
     this.nearAlignment = WrapMoreNearAlignment.start,
     this.nearChild,
+    this.nearBuilder,
     this.alwaysShowNearChild = false,
+    this.separate,
   });
 
   @override
@@ -72,7 +75,7 @@ class ExpandedWrap extends StatefulWidget {
 
   /// The construction of the final component is always added at the
   /// end of the list and always displayed.
-  final WrapDropChildBuilder? dropBuilder;
+  final WrapChildBuilder? dropBuilder;
 
   /// The minimum row, if the total number of rows is greater than the
   /// minimum row, [dropChild] will be displayed, otherwise it will not
@@ -112,10 +115,17 @@ class ExpandedWrap extends StatefulWidget {
   /// otherwise, it will not be displayed.
   final Widget? nearChild;
 
+  /// The builder of the [nearChild] component.
+  final WrapChildBuilder? nearBuilder;
+
   /// Whether to always display the [nearChild], if true, then display; Otherwise,
   /// if there is more data, the [nearChild] will be displayed. The default is false,
   /// usually used for the purpose of displaying more data.
   final bool alwaysShowNearChild;
+
+  /// Insert a separator component between each element on main axis.
+  /// After setting [separate], the parameter [spacing] will become invalid.
+  final Widget? separate;
 }
 
 class _ExpandedWrapState extends State<ExpandedWrap> {
@@ -173,6 +183,14 @@ class _ExpandedWrapState extends State<ExpandedWrap> {
     return child;
   }
 
+  Widget? _buildNearChild(BuildContext context) {
+    Widget? child = widget.nearChild;
+    if (widget.nearBuilder case final nearBuilder?) {
+      child = nearBuilder(context, effectController, child);
+    }
+    return child;
+  }
+
   @override
   Widget build(BuildContext context) {
     return WrapMore(
@@ -193,8 +211,9 @@ class _ExpandedWrapState extends State<ExpandedWrap> {
       nearDirection: widget.nearDirection,
       nearSpacing: widget.nearSpacing,
       nearAlignment: widget.nearAlignment,
-      nearChild: widget.nearChild,
+      nearChild: _buildNearChild(context),
       alwaysShowNearChild: widget.alwaysShowNearChild,
+      separate: widget.separate,
       children: widget.children,
     );
   }
@@ -229,7 +248,7 @@ class ExpandedWrapController extends ChangeNotifier {
 }
 
 /// [dropChild]的构建
-typedef WrapDropChildBuilder = Widget Function(
+typedef WrapChildBuilder = Widget Function(
   BuildContext context,
   ExpandedWrapController controller,
   Widget? child,

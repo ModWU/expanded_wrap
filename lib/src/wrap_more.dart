@@ -1,7 +1,8 @@
 import 'package:flutter/cupertino.dart';
+
 import 'render_wrap_more.dart';
-import 'wrap_more_element.dart';
 import 'wrap_more_definition.dart';
+import 'wrap_more_element.dart';
 
 class WrapMore extends RenderObjectWidget {
   /// Creates a wrap layout.
@@ -36,6 +37,7 @@ class WrapMore extends RenderObjectWidget {
     this.nearSpacing = 0.0,
     this.nearAlignment = WrapMoreNearAlignment.start,
     this.alwaysShowNearChild = false,
+    this.separate,
   })  : assert(spacing >= 0.0),
         assert(runSpacing >= 0.0),
         assert(nearSpacing >= 0.0),
@@ -224,6 +226,10 @@ class WrapMore extends RenderObjectWidget {
 
   /// Expand or not, default is false.
   final bool isExpanded;
+
+  /// Insert a separator component between each element on main axis.
+  /// After setting [separate], the parameter [spacing] will become invalid.
+  final Widget? separate;
 
   @override
   RenderWrapMore createRenderObject(BuildContext context) {

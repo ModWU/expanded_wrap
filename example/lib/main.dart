@@ -146,86 +146,98 @@ class _MyAppState extends State<MyApp> {
         appBar: AppBar(
           title: Text('ExpandedWrap test'),
         ),
-        body: SingleChildScrollView(
-          child: Column(
-            children: [
-              v(20),
-              Text('count: ${textList.length}'),
-              v(12),
-              // ExpandedWrap
-              Container(
-                color: Colors.green.withValues(alpha: 0.1),
-                width: double.infinity,
-                child: ExpandedWrap(
-                  spacing: 24,
-                  runSpacing: 24,
-                  minLines: minLines,
-                  maxLines: maxLines,
-                  verticalDirection: VerticalDirection.down,
-                  nearChild: GestureDetector(
-                    onTap: () {
-                      print("near");
+        body: Directionality(
+          textDirection: TextDirection.rtl,
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                v(20),
+                Text('count: ${textList.length}'),
+                v(12),
+                // ExpandedWrap
+                Container(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  width: double.infinity,
+                  child: ExpandedWrap(
+                    spacing: 0,
+                    runSpacing: 24,
+                    minLines: minLines,
+                    maxLines: maxLines,
+                    verticalDirection: VerticalDirection.down,
+                    crossAxisAlignment: WrapMoreCrossAlignment.center,
+                    alignment: WrapMoreAlignment.start,
+                    nearChild: GestureDetector(
+                      onTap: () {
+                        print("near");
+                      },
+                      child: AnimatedBuilder(
+                          animation: controller,
+                          builder: (_, __) {
+                            return _button(
+                              controller.isExpanded ? 'collapse' : 'expand',
+                              controller.toggle,
+                              height: 24,
+                              width: 120,
+                              color: Colors.white,
+                            );
+                          }),
+                    ),
+                    nearAlignment: WrapMoreNearAlignment.stretch,
+                    alwaysShowNearChild:
+                        false, // When set to false, it means that [nearChild] will only be displayed when there is more unfinished data
+                    nearSpacing: 20,
+                    nearDirection: AxisDirection.right,
+                    controller: controller,
+                    separate: Container(
+                      width: 1,
+                      height: 60,
+                      margin: EdgeInsets.symmetric(horizontal: 4),
+                      color: Colors.red,
+                    ),
+                    dropBuilder: (BuildContext context,
+                        ExpandedWrapController controller, Widget? child) {
+                      return _button(
+                        controller.isExpanded ? 'collapse' : 'expand',
+                        controller.toggle,
+                        width: 100,
+                        height: 24,
+                        textColor: Colors.white,
+                        color: Colors.grey,
+                      );
                     },
-                    child: AnimatedBuilder(
-                        animation: controller,
-                        builder: (_, __) {
-                          return _button(
-                            controller.isExpanded ? 'collapse' : 'expand',
-                            controller.toggle,
-                            height: 24,
-                            width: 120,
-                            color: Colors.white,
-                          );
-                        }),
+                    children: textList.indexed
+                        .map((s) => b('${s.$1}#${s.$2}'))
+                        .toList()
+                      ..add(Container(
+                        width: double.infinity,
+                        height: 40,
+                        color: Colors.red.withValues(alpha: 0.4),
+                        child: Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: Text('last'),
+                        ),
+                      )),
                   ),
-                  nearAlignment: WrapMoreNearAlignment.stretch,
-                  alwaysShowNearChild:
-                      false, // When set to false, it means that [nearChild] will only be displayed when there is more unfinished data
-                  nearSpacing: 20,
-                  nearDirection: AxisDirection.right,
-                  controller: controller,
-                  dropBuilder: (BuildContext context,
-                      ExpandedWrapController controller, Widget? child) {
-                    return _button(
-                      controller.isExpanded ? 'collapse' : 'expand',
-                      controller.toggle,
-                      width: double.infinity,
-                      height: 24,
-                      textColor: Colors.white,
-                      color: Colors.grey,
-                    );
-                  },
-                  children:
-                      textList.indexed.map((s) => b('${s.$1}#${s.$2}')).toList()
-                        ..add(Container(
-                          width: double.infinity,
-                          height: 40,
-                          color: Colors.red.withValues(alpha: 0.4),
-                          child: Align(
-                            alignment: AlignmentDirectional.centerEnd,
-                            child: Text('last'),
-                          ),
-                        )),
                 ),
-              ),
-              v(24),
-              buildReset(_randomChildren),
-              v(20),
-              Text('minLines: $minLines'),
-              buildReset(_randomMinLines),
-              v(20),
-              Text('maxLines: $maxLines'),
-              buildReset(_randomMaxLines),
-              v(6),
-              AnimatedBuilder(
-                  animation: controller,
-                  builder: (_, __) {
-                    return buildReset(
-                      controller.toggle,
-                      str: controller.isExpanded ? 'collapse' : 'expand',
-                    );
-                  }),
-            ],
+                v(24),
+                buildReset(_randomChildren),
+                v(20),
+                Text('minLines: $minLines'),
+                buildReset(_randomMinLines),
+                v(20),
+                Text('maxLines: $maxLines'),
+                buildReset(_randomMaxLines),
+                v(6),
+                AnimatedBuilder(
+                    animation: controller,
+                    builder: (_, __) {
+                      return buildReset(
+                        controller.toggle,
+                        str: controller.isExpanded ? 'collapse' : 'expand',
+                      );
+                    }),
+              ],
+            ),
           ),
         ),
       ),

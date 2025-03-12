@@ -36,6 +36,10 @@ class WrapMoreElement extends RenderObjectElement {
   Element? get nearElement =>
       _forgottenChildren.contains(_nearElement) ? null : _nearElement;
   Element? _nearElement;
+
+  Element? get separateElement =>
+      _forgottenChildren.contains(_separateElement) ? null : _separateElement;
+  Element? _separateElement;
   // We keep a set of forgotten children to avoid O(n^2) work walking _children
   // repeatedly to remove children.
   final Set<Element> _forgottenChildren = HashSet<Element>();
@@ -45,6 +49,9 @@ class WrapMoreElement extends RenderObjectElement {
 
   // [nearChild] slot
   final IndexedSlot nearElementSlot = IndexedSlot(-2, null);
+
+  // [separateChild] slot
+  final IndexedSlot separateElementSlot = IndexedSlot(-3, null);
 
   @override
   void insertRenderObjectChild(RenderObject child, IndexedSlot<Element?> slot) {
@@ -60,6 +67,10 @@ class WrapMoreElement extends RenderObjectElement {
       final RenderWrapMore parent = renderObject as RenderWrapMore;
       assert(child is RenderBox);
       parent.nearRenderBox = child as RenderBox;
+    } else if (slot == separateElementSlot) {
+      final RenderWrapMore parent = renderObject as RenderWrapMore;
+      assert(child is RenderBox);
+      parent.separateRenderBox = child as RenderBox;
     } else {
       renderObject.insert(child, after: slot.value?.renderObject);
     }
@@ -75,7 +86,7 @@ class WrapMoreElement extends RenderObjectElement {
     assert(child.parent == renderObject);
     renderObject.move(child, after: newSlot.value?.renderObject);
     assert(renderObject == this.renderObject);
-    // 不需要处理_dropElement和_nearElement
+    // 不需要处理_dropElement/_nearElement/_separateElement
   }
 
   @override
@@ -90,6 +101,9 @@ class WrapMoreElement extends RenderObjectElement {
     } else if (slot == nearElementSlot) {
       final RenderWrapMore parent = renderObject as RenderWrapMore;
       parent.nearRenderBox = null;
+    } else if (slot == separateElementSlot) {
+      final RenderWrapMore parent = renderObject as RenderWrapMore;
+      parent.separateRenderBox = null;
     } else {
       renderObject.remove(child);
     }
@@ -103,6 +117,10 @@ class WrapMoreElement extends RenderObjectElement {
     }
     if (_nearElement != null && !_forgottenChildren.contains(_nearElement)) {
       visitor(_nearElement!);
+    }
+    if (_separateElement != null &&
+        !_forgottenChildren.contains(_separateElement)) {
+      visitor(_separateElement!);
     }
     for (final Element child in _children) {
       if (!_forgottenChildren.contains(child)) {
@@ -121,6 +139,9 @@ class WrapMoreElement extends RenderObjectElement {
     }
     if (child == _nearElement) {
       _nearElement = null;
+    }
+    if (child == _separateElement) {
+      _separateElement = null;
     }
     super.forgetChild(child);
   }
@@ -181,6 +202,11 @@ class WrapMoreElement extends RenderObjectElement {
       wrapMore.nearChild,
       nearElementSlot,
     );
+    _separateElement = updateChild(
+      _separateElement,
+      wrapMore.separate,
+      separateElementSlot,
+    );
   }
 
   @override
@@ -203,6 +229,11 @@ class WrapMoreElement extends RenderObjectElement {
       _nearElement,
       wrapMore.nearChild,
       nearElementSlot,
+    );
+    _separateElement = updateChild(
+      _separateElement,
+      wrapMore.separate,
+      separateElementSlot,
     );
     _forgottenChildren.clear();
   }
