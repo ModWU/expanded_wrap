@@ -25,7 +25,7 @@ We use the expanded_wrap plugin to build a expanded wrap。
 
 ```yaml
 dependencies:
-  expanded_wrap: '^0.0.3'
+  expanded_wrap: '^1.0.0'
 ```
 
 ## Usage
