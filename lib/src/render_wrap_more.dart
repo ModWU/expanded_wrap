@@ -3,8 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'wrap_more_definition.dart';
+import 'wrap_more_setter.dart';
 
 typedef _NextChild = RenderBox? Function(RenderBox child);
 typedef _PositionChild = void Function(Offset offset, RenderBox child);
@@ -429,6 +431,7 @@ class RenderWrapMore extends RenderBox
     double nearSpacing = 0.0,
     WrapMoreNearAlignment nearAlignment = WrapMoreNearAlignment.start,
     bool alwaysShowNearChild = false,
+    WrapMoreSetter? setter,
   })  : _direction = direction,
         _alignment = alignment,
         _spacing = spacing,
@@ -445,11 +448,41 @@ class RenderWrapMore extends RenderBox
         _isExpanded = isExpanded,
         _nearSpacing = nearSpacing,
         _nearAlignment = nearAlignment,
-        _alwaysShowNearChild = alwaysShowNearChild {
+        _alwaysShowNearChild = alwaysShowNearChild,
+        _setter = setter {
     this.dropRenderBox = dropRenderBox;
     this.nearRenderBox = nearRenderBox;
     this.separateRenderBox = separateRenderBox;
     addAll(children);
+  }
+
+  /// Set whether expandable.
+  WrapMoreSetter? _setter;
+  set setter(WrapMoreSetter? value) {
+    if (value == _setter) return;
+    final bool? oldExpandable = _setter?.expandable;
+    _setter = value;
+    if (value != null) {
+      if (oldExpandable == null) {
+        markNeedsLayout();
+      } else {
+        value.setExpandable(oldExpandable);
+      }
+    }
+  }
+
+  // callback
+  void _invokeAfterFrame(VoidCallback callback) {
+    // 这边的通知需要在帧结束后通知
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle ||
+        SchedulerBinding.instance.schedulerPhase ==
+            SchedulerPhase.postFrameCallbacks) {
+      callback();
+    } else {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        callback();
+      });
+    }
   }
 
   /// nearChild
@@ -1544,17 +1577,33 @@ class RenderWrapMore extends RenderBox
       );
     }
 
+    bool? expandable;
+    if (_setter case final setter?) {
+      // 不是空就需要判断是否有能力展开
+      expandable = _layoutRuns(
+        tmpMainAxisLimit,
+        dropLayout,
+        separateSize,
+        tryLayoutChild,
+        true,
+      );
+      _invokeAfterFrame(() {
+        setter.setExpandable(expandable!);
+      });
+    }
+
     if (nearLayout != null && nearLayout.hasSize) {
       // // 此时需要计算nearLayout
       final isShowNearChild = alwaysShowNearChild
           ? true
-          : _layoutRuns(
-              tmpMainAxisLimit,
-              dropLayout,
-              separateSize,
-              tryLayoutChild,
-              true,
-            );
+          : (expandable ??
+              _layoutRuns(
+                tmpMainAxisLimit,
+                dropLayout,
+                separateSize,
+                tryLayoutChild,
+                true,
+              ));
       assert(isShowNearChild != null);
       // 是否展开有效，如果有效，就需要绘制[nearChild]
       if (isShowNearChild) {

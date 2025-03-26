@@ -1,3 +1,6 @@
+library;
+
+import 'package:expanded_wrap/src/wrap_more_setter.dart';
 import 'package:flutter/cupertino.dart';
 
 import 'wrap_more.dart';
@@ -9,6 +12,7 @@ class ExpandedWrap extends StatefulWidget {
     super.key,
     required this.children,
     this.controller,
+    this.notifier,
     this.dropBuilder,
     this.dropChild,
     this.direction = Axis.horizontal,
@@ -41,6 +45,10 @@ class ExpandedWrap extends StatefulWidget {
 
   /// controller
   final ExpandedWrapController? controller;
+
+  /// notifier, provide the expandable state.
+  /// Use it when needing to check whether there is more data available.
+  final ExpandedWrapNotifier? notifier;
 
   /// see [Wrap]
   final Axis direction;
@@ -138,6 +146,7 @@ class _ExpandedWrapState extends State<ExpandedWrap> {
     super.initState();
     _updateController();
     effectController._isExpanded = widget.initialExpanded;
+    widget.notifier?._attachController(effectController);
   }
 
   void _updateController() {
@@ -163,10 +172,16 @@ class _ExpandedWrapState extends State<ExpandedWrap> {
     if (widget.controller != effectController) {
       _updateController();
     }
+
+    if (widget.notifier != oldWidget.notifier) {
+      oldWidget.notifier?._detachController();
+      widget.notifier?._attachController(effectController);
+    }
   }
 
   @override
   void dispose() {
+    widget.notifier?._detachController();
     effectController.removeListener(_rebuild);
     if (effectController != widget.controller) {
       effectController.dispose();
@@ -214,19 +229,20 @@ class _ExpandedWrapState extends State<ExpandedWrap> {
       nearChild: _buildNearChild(context),
       alwaysShowNearChild: widget.alwaysShowNearChild,
       separate: widget.separate,
+      setter: widget.notifier,
       children: widget.children,
     );
   }
 }
 
-/// 展开收起控制器
+/// Expand/Collapse Controller
 class ExpandedWrapController extends ChangeNotifier {
   bool? _isExpanded;
 
-  /// 是否展开
+  /// Is Expanded
   bool get isExpanded => _isExpanded ?? false;
 
-  /// 设置展开/收起
+  /// Set Expand/Collapse
   set isExpanded(bool value) {
     if (value == _isExpanded) {
       return;
@@ -235,7 +251,7 @@ class ExpandedWrapController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 切换展开状态
+  /// Toggle this expanded State
   void toggle() {
     isExpanded = !isExpanded;
   }
@@ -247,7 +263,54 @@ class ExpandedWrapController extends ChangeNotifier {
   }
 }
 
-/// [dropChild]的构建
+/// Expand/Collapse Controller
+class ExpandedWrapNotifier extends ChangeNotifier with WrapMoreSetter {
+  // Auto-bind a Controller
+  ExpandedWrapController? _controller;
+
+  void _attachController(ExpandedWrapController controller) {
+    _controller = controller;
+    controller.removeListener(notifyListeners);
+    controller.addListener(notifyListeners);
+  }
+
+  void _detachController() {
+    _controller?.removeListener(notifyListeners);
+    _controller = null;
+  }
+
+  /// Whether Expandable
+  @override
+  bool get expandable => _expandable ?? false;
+  bool? _expandable;
+
+  /// Toggle this expanded State
+  void toggle() => _controller?.toggle();
+
+  /// Is Expanded
+  bool get isExpanded => _controller?.isExpanded ?? false;
+
+  /// Set Expand/Collapse
+  void setExpanded(bool value) => _controller?.isExpanded = value;
+
+  @override
+  void dispose() {
+    _controller?.removeListener(notifyListeners);
+    _controller = null;
+    super.dispose();
+  }
+
+  @override
+  void setExpandable(bool value) {
+    if (value == _expandable) {
+      return;
+    }
+    _expandable = value;
+    notifyListeners();
+  }
+}
+
+/// this [dropChild]/[nearChild] builder
 typedef WrapChildBuilder = Widget Function(
   BuildContext context,
   ExpandedWrapController controller,

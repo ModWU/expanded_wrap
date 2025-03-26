@@ -20,7 +20,8 @@ class _MyAppState extends State<MyApp> {
   int minLines = 2;
   int? maxLines;
 
-  ExpandedWrapController controller = ExpandedWrapController();
+  //ExpandedWrapController controller = ExpandedWrapController();
+  ExpandedWrapNotifier notifier = ExpandedWrapNotifier();
 
   void _randomMinLines() {
     setState(() {
@@ -37,7 +38,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
-    controller.dispose();
+    notifier.dispose();
     super.dispose();
   }
 
@@ -90,7 +91,7 @@ class _MyAppState extends State<MyApp> {
 
   Widget _button(
     String str,
-    VoidCallback onTap, {
+    VoidCallback? onTap, {
     EdgeInsetsGeometry? margin,
     Color? color,
     Color? textColor,
@@ -127,7 +128,7 @@ class _MyAppState extends State<MyApp> {
           );
   }
 
-  Widget buildReset(VoidCallback onTap, {String? str}) {
+  Widget buildReset(VoidCallback? onTap, {String? str}) {
     return _button(
       str ?? 'reset',
       onTap,
@@ -159,65 +160,67 @@ class _MyAppState extends State<MyApp> {
                   color: Colors.green.withValues(alpha: 0.1),
                   width: double.infinity,
                   child: ExpandedWrap(
-                    spacing: 0,
-                    runSpacing: 24,
-                    minLines: minLines,
-                    maxLines: maxLines,
-                    verticalDirection: VerticalDirection.down,
-                    crossAxisAlignment: WrapMoreCrossAlignment.center,
-                    alignment: WrapMoreAlignment.start,
-                    nearChild: GestureDetector(
-                      onTap: () {
-                        print("near");
+                      spacing: 0,
+                      runSpacing: 24,
+                      minLines: minLines,
+                      maxLines: maxLines,
+                      verticalDirection: VerticalDirection.down,
+                      crossAxisAlignment: WrapMoreCrossAlignment.center,
+                      alignment: WrapMoreAlignment.start,
+                      nearChild: GestureDetector(
+                        onTap: () {
+                          print("near");
+                        },
+                        child: AnimatedBuilder(
+                            animation: notifier,
+                            builder: (_, __) {
+                              return _button(
+                                notifier.isExpanded ? 'collapse' : 'expand',
+                                notifier.toggle,
+                                height: 24,
+                                width: 100,
+                                color: Colors.white,
+                              );
+                            }),
+                      ),
+                      nearAlignment: WrapMoreNearAlignment.stretch,
+                      alwaysShowNearChild:
+                          false, // When set to false, it means that [nearChild] will only be displayed when there is more unfinished data
+                      nearSpacing: 20,
+                      nearDirection: AxisDirection.right,
+                      notifier: notifier,
+                      separate: Container(
+                        width: 1,
+                        height: 60,
+                        margin: EdgeInsets.symmetric(horizontal: 4),
+                        color: Colors.red,
+                      ),
+                      dropBuilder: (BuildContext context,
+                          ExpandedWrapController controller, Widget? child) {
+                        return _button(
+                          controller.isExpanded ? 'collapse' : 'expand',
+                          controller.toggle,
+                          width: 100,
+                          height: 24,
+                          textColor: Colors.white,
+                          color: Colors.grey,
+                        );
                       },
-                      child: AnimatedBuilder(
-                          animation: controller,
-                          builder: (_, __) {
-                            return _button(
-                              controller.isExpanded ? 'collapse' : 'expand',
-                              controller.toggle,
-                              height: 24,
-                              width: 120,
-                              color: Colors.white,
-                            );
-                          }),
-                    ),
-                    nearAlignment: WrapMoreNearAlignment.stretch,
-                    alwaysShowNearChild:
-                        false, // When set to false, it means that [nearChild] will only be displayed when there is more unfinished data
-                    nearSpacing: 20,
-                    nearDirection: AxisDirection.right,
-                    controller: controller,
-                    separate: Container(
-                      width: 1,
-                      height: 60,
-                      margin: EdgeInsets.symmetric(horizontal: 4),
-                      color: Colors.red,
-                    ),
-                    dropBuilder: (BuildContext context,
-                        ExpandedWrapController controller, Widget? child) {
-                      return _button(
-                        controller.isExpanded ? 'collapse' : 'expand',
-                        controller.toggle,
-                        width: 100,
-                        height: 24,
-                        textColor: Colors.white,
-                        color: Colors.grey,
-                      );
-                    },
-                    children: textList.indexed
-                        .map((s) => b('${s.$1}#${s.$2}'))
-                        .toList()
-                      ..add(Container(
-                        width: double.infinity,
-                        height: 40,
-                        color: Colors.red.withValues(alpha: 0.4),
-                        child: Align(
-                          alignment: AlignmentDirectional.centerEnd,
-                          child: Text('last'),
-                        ),
-                      )),
-                  ),
+                      children: textList.indexed
+                          .map((s) => b('${s.$1}#${s.$2}'))
+                          .toList()
+                      // ..add(
+                      //   Container(
+                      //     width: double.infinity,
+                      //     height: 40,
+                      //     color: Colors.red.withValues(alpha: 0.4),
+                      //     child: Align(
+                      //       alignment: AlignmentDirectional.centerEnd,
+                      //       child: Text('last'),
+                      //     ),
+                      //   ),
+                      // ),
+                      ),
                 ),
                 v(24),
                 buildReset(_randomChildren),
@@ -229,11 +232,11 @@ class _MyAppState extends State<MyApp> {
                 buildReset(_randomMaxLines),
                 v(6),
                 AnimatedBuilder(
-                    animation: controller,
+                    animation: notifier,
                     builder: (_, __) {
                       return buildReset(
-                        controller.toggle,
-                        str: controller.isExpanded ? 'collapse' : 'expand',
+                        notifier.expandable ? notifier.toggle : null,
+                        str: notifier.isExpanded ? 'collapse' : 'expand',
                       );
                     }),
               ],

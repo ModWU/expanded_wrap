@@ -20,12 +20,13 @@ We use the expanded_wrap plugin to build a expanded wrap。
 * support dropChild
 * support nearChild
 * support separate
+* support ExpandedWrapNotifier/ExpandedWrapController
 
 ## Getting started
 
 ```yaml
 dependencies:
-  expanded_wrap: '^1.0.0'
+  expanded_wrap: '^1.0.1'
 ```
 
 ## Usage

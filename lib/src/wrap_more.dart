@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'render_wrap_more.dart';
 import 'wrap_more_definition.dart';
 import 'wrap_more_element.dart';
+import 'wrap_more_setter.dart';
 
 class WrapMore extends RenderObjectWidget {
   /// Creates a wrap layout.
@@ -38,6 +39,7 @@ class WrapMore extends RenderObjectWidget {
     this.nearAlignment = WrapMoreNearAlignment.start,
     this.alwaysShowNearChild = false,
     this.separate,
+    this.setter,
   })  : assert(spacing >= 0.0),
         assert(runSpacing >= 0.0),
         assert(nearSpacing >= 0.0),
@@ -231,6 +233,9 @@ class WrapMore extends RenderObjectWidget {
   /// After setting [separate], the parameter [spacing] will become invalid.
   final Widget? separate;
 
+  /// Set whether expandable.
+  final WrapMoreSetter? setter;
+
   @override
   RenderWrapMore createRenderObject(BuildContext context) {
     return RenderWrapMore(
@@ -251,6 +256,7 @@ class WrapMore extends RenderObjectWidget {
       nearAlignment: nearAlignment,
       alwaysShowNearChild: alwaysShowNearChild,
       isExpanded: isExpanded,
+      setter: setter,
     );
   }
 
@@ -273,7 +279,8 @@ class WrapMore extends RenderObjectWidget {
       ..nearDirection = nearDirection
       ..nearSpacing = nearSpacing
       ..nearAlignment = nearAlignment
-      ..alwaysShowNearChild = alwaysShowNearChild;
+      ..alwaysShowNearChild = alwaysShowNearChild
+      ..setter = setter;
   }
 
   final List<Widget> children;

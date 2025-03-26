@@ -13,3 +13,7 @@
 ## 1.0.0
 
 * Adding the [separate] feature.
+
+## 1.0.1
+
+* Adding the [ExpandedWrapNotifier], Use it to check whether it can be expanded or collapsed.
