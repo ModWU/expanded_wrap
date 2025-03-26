@@ -1,10 +1,8 @@
-library;
-
-import 'package:expanded_wrap/src/wrap_more_setter.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 import 'wrap_more.dart';
 import 'wrap_more_definition.dart';
+import 'wrap_more_setter.dart';
 
 /// Wrap with expand and collapse function.
 class ExpandedWrap extends StatefulWidget {
